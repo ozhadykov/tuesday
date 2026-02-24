@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { ThemeProvider } from './context/ThemeContext'
 import Navbar from './components/Navbar'
@@ -9,25 +9,47 @@ import Settings from './components/Settings'
 import WeeklyOverview from './components/WeeklyOverview'
 import './App.css'
 
+const API_BASE = 'http://localhost:4000/api';
+
 function AppContent() {
   const navigate = useNavigate()
-  const [boards, setBoards] = useState([
-    { id: 'main', title: 'Main Board' },
-    { id: 'marketing', title: 'Marketing' },
-  ])
+  const [boards, setBoards] = useState<{id: string, title: string}[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [newBoardTitle, setNewBoardTitle] = useState('')
+  const [loading, setLoading] = useState(true)
 
-  const handleAddBoard = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetch(`${API_BASE}/boards`)
+      .then(res => res.json())
+      .then(data => {
+        setBoards(data);
+        setLoading(false);
+      })
+      .catch(console.error);
+  }, []);
+
+  const handleAddBoard = async (e: FormEvent) => {
     e.preventDefault()
     if (newBoardTitle.trim()) {
-      const id = newBoardTitle.toLowerCase().replace(/\s+/g, '-')
-      const newBoard = { id, title: newBoardTitle }
-      setBoards([...boards, newBoard])
-      setNewBoardTitle('')
-      setIsModalOpen(false)
-      navigate(`/boards/${id}`)
+      try {
+        const res = await fetch(`${API_BASE}/boards`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: newBoardTitle })
+        });
+        const newBoard = await res.json();
+        setBoards([newBoard, ...boards])
+        setNewBoardTitle('')
+        setIsModalOpen(false)
+        navigate(`/boards/${newBoard.id}`)
+      } catch (error) {
+        console.error('Failed to create board', error)
+      }
     }
+  }
+
+  if (loading) {
+     return <div className="min-h-screen bg-white dark:bg-zinc-900 flex items-center justify-center text-zinc-500">Loading workspaces...</div>
   }
 
   return (
@@ -40,7 +62,7 @@ function AppContent() {
             <Route path="/boards/:boardId" element={<Board />} />
             <Route path="/overview" element={<WeeklyOverview />} />
             <Route path="/settings" element={<Settings />} />
-            <Route path="/" element={<Navigate to="/boards/main" replace />} />
+            <Route path="/" element={boards.length > 0 ? <Navigate to={`/boards/${boards[0].id}`} replace /> : <div className="flex items-center justify-center h-full text-zinc-500">Please create a board from the sidebar to get started.</div>} />
           </Routes>
         </main>
       </div>

@@ -18,7 +18,8 @@ model Board {
 model Column {
   id        String   @id @default(uuid())
   title     String
-  order     Int
+  color     String   @default("#zinc-500")
+  order     Int      @default(0)
   boardId   String
   board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
   tasks     Task[]
@@ -30,7 +31,10 @@ model Task {
   id          String   @id @default(uuid())
   title       String
   description String?
-  order       Int
+  owner       String   @default("Unassigned")
+  status      String   @default("Not Started")
+  deadline    String?
+  order       Int      @default(0)
   columnId    String
   column      Column   @relation(fields: [columnId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
