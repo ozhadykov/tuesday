@@ -6,13 +6,27 @@ datasource db {
   provider = "postgresql"
 }
 
+enum UserRole {
+  ADMIN
+  MEMBER
+}
+
+enum TeamRole {
+  LEAD
+  MEMBER
+}
+
 model Board {
   id          String   @id @default(uuid())
   title       String
   description String?
+  teamId      String?
+  team        Team?    @relation(fields: [teamId], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   columns     Column[]
+
+  @@index([teamId])
 }
 
 model Column {
@@ -32,6 +46,8 @@ model Task {
   title       String
   description String?
   owner       String   @default("Unassigned")
+  assigneeId  String?
+  assignee    User?    @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   status      String   @default("Not Started")
   deadline    String?
   order       Int      @default(0)
@@ -39,4 +55,40 @@ model Task {
   column      Column   @relation(fields: [columnId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([assigneeId])
+  @@index([deadline])
+}
+
+model User {
+  id           String           @id @default(uuid())
+  name         String
+  email        String           @unique
+  role         UserRole         @default(MEMBER)
+  memberships  TeamMembership[]
+  assignedTasks Task[]          @relation("TaskAssignee")
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+model Team {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  memberships TeamMembership[]
+  boards      Board[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model TeamMembership {
+  id        String   @id @default(uuid())
+  userId    String
+  teamId    String
+  role      TeamRole @default(MEMBER)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, teamId])
 }
